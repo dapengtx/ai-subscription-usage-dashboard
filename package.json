@@ -4,6 +4,14 @@
   "description": "Local-first dashboard for ChatGPT/Codex and Claude Code subscription usage attribution.",
   "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/dapengtx/ai-subscription-usage-dashboard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dapengtx/ai-subscription-usage-dashboard/issues"
+  },
+  "homepage": "https://github.com/dapengtx/ai-subscription-usage-dashboard#readme",
   "scripts": {
     "start": "node server.mjs",
     "check": "node --check server.mjs && node --check app.js"
