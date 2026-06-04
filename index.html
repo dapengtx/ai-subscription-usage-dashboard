@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI 订阅用量 Dashboard</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <aside class="sidebar" aria-label="主导航">
+      <div class="brand">
+        <span class="brand-mark">AI</span>
+        <div>
+          <strong>Usage Desk</strong>
+          <span>订阅号用量监控</span>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <a class="active" href="#overview" aria-current="page">总览</a>
+        <a href="#accounts">账号</a>
+        <a href="#models">模型</a>
+        <a href="#settings">数据源</a>
+      </nav>
+
+      <div class="sidebar-note">
+        <span>固定成本</span>
+        <strong id="budgetText">$0</strong>
+        <div class="mini-meter" aria-hidden="true">
+          <span id="budgetMeter" style="width: 0%"></span>
+        </div>
+      </div>
+    </aside>
+
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">2026 年 6 月周期</p>
+          <h1>ChatGPT 与 Claude 订阅用量</h1>
+        </div>
+        <div class="top-actions">
+          <button class="primary-button" id="importButton" type="button">自动采集</button>
+          <span class="sync-status" id="syncStatus">上次采集：尚未采集</span>
+        </div>
+      </header>
+
+      <section class="control-row" aria-label="筛选条件">
+        <div class="segmented" role="tablist" aria-label="服务商">
+          <button class="segment active" type="button" data-provider="all" role="tab" aria-selected="true">全部</button>
+          <button class="segment" type="button" data-provider="chatgpt" role="tab" aria-selected="false">ChatGPT</button>
+          <button class="segment" type="button" data-provider="claude" role="tab" aria-selected="false">Claude</button>
+        </div>
+
+        <label class="select-label">
+          周期
+          <select id="periodSelect">
+            <option value="30d" selected>近 30 天</option>
+            <option value="month">本月</option>
+            <option value="week">近 7 天</option>
+            <option value="quarter">本季度</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="metric-grid" id="overview" aria-label="关键指标">
+        <article class="metric-card">
+          <span class="metric-label">模型调用数</span>
+          <strong id="totalMessages">0</strong>
+          <small id="messageTrend">较上周期 --</small>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">固定成本</span>
+          <strong id="totalCost">$0</strong>
+          <small id="costTrend">使用价值 --</small>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">活跃订阅号</span>
+          <strong id="activeAccounts">0</strong>
+          <small id="seatText">席位状态 --</small>
+        </article>
+        <article class="metric-card warning-card">
+          <span class="metric-label">使用价值</span>
+          <strong id="totalUsageValue">$0</strong>
+          <small id="valueRatioText">按 Token 价格估算</small>
+        </article>
+      </section>
+
+      <section class="workspace-grid">
+        <article class="panel chart-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>每日请求趋势</h2>
+              <p>按服务商聚合本地日志中的请求数</p>
+            </div>
+            <div class="legend">
+              <span><i class="swatch chatgpt"></i>ChatGPT</span>
+              <span><i class="swatch claude"></i>Claude</span>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="usageChart" width="980" height="360" aria-label="每日请求柱状图"></canvas>
+            <div class="chart-tooltip" id="chartTooltip" role="tooltip" aria-hidden="true"></div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-heading compact">
+            <h2>订阅健康度</h2>
+            <button class="text-button" id="rulesButton" type="button">查看规则</button>
+          </div>
+          <div class="health-list" id="healthList"></div>
+        </article>
+      </section>
+
+      <section class="panel session-panel" id="sessionWindows">
+        <div class="panel-heading">
+          <div>
+            <h2>5 小时窗口归因</h2>
+            <p>合并统计平台、模型、请求次数与 Token，判断窗口限额主要由谁触发</p>
+          </div>
+        </div>
+        <div class="session-window-list" id="sessionWindowList"></div>
+      </section>
+
+      <section class="workspace-grid lower-grid">
+        <article class="panel account-panel" id="accounts">
+          <div class="panel-heading">
+            <div>
+              <h2>订阅号明细</h2>
+              <p>跟踪每个账号的模型、额度、成员和续费状态</p>
+            </div>
+            <button class="text-button" id="addAccountButton" type="button">新增账号</button>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>订阅号</th>
+                  <th>服务</th>
+                  <th>计划</th>
+                  <th>请求</th>
+                  <th>Token</th>
+                  <th>固定成本</th>
+                  <th>使用价值</th>
+                  <th>额度</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="accountRows"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section class="panel model-panel" id="models">
+        <div class="panel-heading">
+          <div>
+            <h2>模型 Token 明细</h2>
+            <p>按订阅号和模型拆分请求数、输入、输出、缓存与推理 Token</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="model-table">
+            <thead>
+              <tr>
+                <th>订阅号</th>
+                <th>模型</th>
+                <th>请求</th>
+                <th>输入</th>
+                <th>输出</th>
+                <th>缓存写入</th>
+                <th>缓存读取</th>
+                <th>推理</th>
+                <th>总 Token（输入+输出）</th>
+                <th>含缓存 Token</th>
+                <th>使用价值</th>
+              </tr>
+            </thead>
+            <tbody id="modelRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel source-panel" id="settings">
+        <div>
+          <h2>数据源配置</h2>
+          <p id="sourceText">订阅号按美元月费记录固定成本，Token 估算结果作为美元使用价值；系统不做汇率换算。当前仅从本机 Claude Code 与 Codex CLI 日志自动采集并留存。</p>
+        </div>
+        <div class="source-actions">
+          <button class="secondary-button" id="connectorStatusButton" type="button">连接器状态</button>
+          <button class="secondary-button" id="uploadCsvButton" type="button">本地日志</button>
+          <button class="primary-button" id="syncJobButton" type="button">开启自动同步</button>
+        </div>
+        <div class="connector-list" id="connectorList"></div>
+      </section>
+    </main>
+
+    <dialog class="modal" id="accountModal">
+      <form id="accountForm" method="dialog">
+        <div class="modal-heading">
+          <div>
+            <h2>新增订阅账号</h2>
+            <p>仅配置订阅档案和本地日志统计口径；系统不会读取外部服务。</p>
+          </div>
+          <button class="icon-button small" type="button" data-close-modal aria-label="关闭">×</button>
+        </div>
+        <div class="form-grid">
+          <label>服务商
+            <select name="provider">
+              <option value="chatgpt">ChatGPT</option>
+              <option value="claude">Claude</option>
+            </select>
+          </label>
+          <label>订阅计划
+            <select name="plan">
+              <option value="Plus">Plus / Pro</option>
+              <option value="Team">Team</option>
+              <option value="Enterprise">Enterprise</option>
+              <option value="Max">Max</option>
+            </select>
+          </label>
+          <label>账号名称
+            <input name="name" required placeholder="例如 ChatGPT Team - 产品组" />
+          </label>
+          <label>归属
+            <input name="owner" placeholder="例如 产品组" />
+          </label>
+          <label>成员数
+            <input name="members" type="number" min="1" value="1" />
+          </label>
+          <label>续费日期
+            <input name="renewalDate" type="date" />
+          </label>
+          <label>历史起点
+            <input name="historyStartDate" type="date" />
+          </label>
+          <label>月费
+            <input name="monthlyPrice" type="number" min="0" step="0.01" placeholder="美元金额，例如 20" />
+          </label>
+          <label>请求额度
+            <input name="messageLimit" type="number" min="0" placeholder="例如 3000" />
+          </label>
+          <label>5 小时 Token 限额
+            <input name="sessionTokenLimit" type="number" min="0" placeholder="例如 1000000" />
+          </label>
+          <label>每周 Token 限额
+            <input name="weeklyTokenLimit" type="number" min="0" placeholder="例如 10000000" />
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button class="secondary-button" type="button" data-close-modal>取消</button>
+          <button class="primary-button" type="submit">保存档案</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal narrow" id="infoModal">
+      <div class="modal-heading">
+        <div>
+          <h2 id="infoTitle">说明</h2>
+          <p id="infoBody"></p>
+        </div>
+        <button class="icon-button small" type="button" data-close-modal aria-label="关闭">×</button>
+      </div>
+      <div class="modal-actions">
+        <button class="primary-button" type="button" data-close-modal>知道了</button>
+      </div>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="./app.js?v=20260604e"></script>
+  </body>
+</html>

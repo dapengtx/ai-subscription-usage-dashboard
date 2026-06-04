@@ -1,0 +1,23 @@
+{
+  "name": "ai-subscription-usage-dashboard",
+  "version": "0.1.0",
+  "description": "Local-first dashboard for ChatGPT/Codex and Claude Code subscription usage attribution.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "check": "node --check server.mjs && node --check app.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "dashboard",
+    "claude-code",
+    "codex",
+    "chatgpt",
+    "usage",
+    "tokens",
+    "local-first"
+  ]
+}
